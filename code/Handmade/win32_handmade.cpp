@@ -7,10 +7,10 @@
 //#include <winuser.h>
 //#include <iostream>
 
-global bool s_running = true;
+global bool sRunning = true;
 
 global WIN32OffscreenBuffer globalOffscreenBuffer;
-
+global Input_state globalInputState;
 
 
 #if defined(LINK_DIRECTLY_WITH_XINPUT_LIB) && (LINK_DIRECTLY_WITH_XINPUT_LIB == FALSE)
@@ -47,23 +47,74 @@ internal WIN32Dims Win32GetWindowDims(HWND hwnd)
     return dims;
 }
 
-internal void Win32HandleKeyBoardInput(WPARAM wParam, LPARAM lParam)
+internal void Win32HandleXInput(Input_state* inputState)
 {
+	DWORD dwResult;
+	for (DWORD controllerIdx = 0;
+		controllerIdx < XUSER_MAX_COUNT;
+		controllerIdx++)
+	{
+		XINPUT_STATE state;
+		ZeroMemory(&state, sizeof(XINPUT_STATE));
+
+		// Simply get the state of the controller from XInput.
+		dwResult = XInputGetState(controllerIdx, &state);
+
+		if (dwResult == ERROR_SUCCESS)
+		{
+			XINPUT_GAMEPAD* Gamepad = &state.Gamepad;
+			//
+			//typedef struct _XINPUT_STATE {
+			//DWORD          dwPacketNumber;
+			//XINPUT_GAMEPAD Gamepad;
+			//} XINPUT_STATE, *PXINPUT_STATE;
+			Gamepad_input_state* gpInputState = &inputState->gamepad;
+			gpInputState->up = (Gamepad->wButtons & XINPUT_GAMEPAD_DPAD_UP);
+			gpInputState->down = (Gamepad->wButtons & XINPUT_GAMEPAD_DPAD_DOWN);
+			gpInputState->left = (Gamepad->wButtons & XINPUT_GAMEPAD_DPAD_LEFT);
+			gpInputState->right = (Gamepad->wButtons & XINPUT_GAMEPAD_DPAD_RIGHT);
+			gpInputState->start = (Gamepad->wButtons & XINPUT_GAMEPAD_START);
+			gpInputState->back = (Gamepad->wButtons & XINPUT_GAMEPAD_BACK);
+			gpInputState->leftThumb = (Gamepad->wButtons & XINPUT_GAMEPAD_LEFT_THUMB);
+			gpInputState->rightThumb = (Gamepad->wButtons & XINPUT_GAMEPAD_RIGHT_THUMB);
+			gpInputState->leftShoulder = (Gamepad->wButtons & XINPUT_GAMEPAD_LEFT_SHOULDER);
+			gpInputState->rightShoulder = (Gamepad->wButtons & XINPUT_GAMEPAD_RIGHT_SHOULDER);
+			gpInputState->aButton = (Gamepad->wButtons & XINPUT_GAMEPAD_A);
+			gpInputState->bButton = (Gamepad->wButtons & XINPUT_GAMEPAD_B);
+			gpInputState->xButton = (Gamepad->wButtons & XINPUT_GAMEPAD_X);
+			gpInputState->yButton = (Gamepad->wButtons & XINPUT_GAMEPAD_Y);
+			gpInputState->stickX = Gamepad->sThumbLX;
+			gpInputState->stickY = Gamepad->sThumbLY;
+		}
+		else
+		{
+			// Controller is not connected
+		}
+	}
+}
+
+internal void Win32HandleKeyBoardInput(WPARAM wParam, LPARAM lParam, Input_state* inputState)
+{
+	Keyboard_input_state* kbInputState = &inputState->keyboard;
 	uint32_t vKeyCode = wParam;
 	uint32_t wasDownBefore = ((lParam & (1 << 30)) != 0);
 	uint32_t isDown = ((lParam & (1 << 31)) == 0);
 	uint32_t isUp = ((lParam & (1 << 31)) == 1);
 	if (vKeyCode == 'W')
 	{
+		kbInputState->up = isDown;
 	}
 	if (vKeyCode == 'A')
 	{
+		kbInputState->left = isDown;
 	}
 	if (vKeyCode == 'S')
 	{
+		kbInputState->down = isDown;
 	}
 	if (vKeyCode == 'D')
 	{
+		kbInputState->right = isDown;
 	}
 	if (vKeyCode == 'Q')
 	{
@@ -73,15 +124,19 @@ internal void Win32HandleKeyBoardInput(WPARAM wParam, LPARAM lParam)
 	}
 	if (vKeyCode == VK_UP)
 	{
+		kbInputState->up = isDown;
 	}
 	if (vKeyCode == VK_DOWN)
 	{
+		kbInputState->down = isDown;
 	}
 	if (vKeyCode == VK_LEFT)
 	{
+		kbInputState->left = isDown;
 	}
 	if (vKeyCode == VK_RIGHT)
 	{
+		kbInputState->right = isDown;
 	}
 	if (vKeyCode == VK_ESCAPE)
 	{
@@ -204,7 +259,7 @@ internal LRESULT MainWindowCallback(HWND window, UINT message, WPARAM wParam, LP
 
 		case WM_CLOSE:
 		{
-			s_running = false;
+			sRunning = false;
 			//PostQuitMessage(0);
 			OutputDebugStringA("WM_CLOSE\n");
 		}
@@ -215,13 +270,13 @@ internal LRESULT MainWindowCallback(HWND window, UINT message, WPARAM wParam, LP
 		case WM_KEYDOWN:
 		case WM_KEYUP:
 		{
-			Win32HandleKeyBoardInput(wParam, lParam);
+			Win32HandleKeyBoardInput(wParam, lParam, &globalInputState);
 		}
 		break;
 
 		case WM_DESTROY:
 		{
-			s_running = false;
+			sRunning = false;
 			OutputDebugStringA("WM_DESTROY\n");
 		}
 		break;
@@ -283,93 +338,53 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
 
 			ShowWindow(hwnd, cmdshow);
 			UpdateWindow(hwnd);
-			s_running = true;
+			sRunning = true;
 
 
-			while(s_running)
+			while(sRunning)
 			{
 				while(PeekMessage(&in_message,0,0,0,PM_REMOVE))
 				{
 					if(in_message.message == WM_QUIT)
-						s_running = false;
+						sRunning = false;
 
 					TranslateMessage(&in_message); 
 					DispatchMessageA(&in_message);
 				}
 
-				DWORD dwResult;
-				for (DWORD controllerIdx = 0; 
-					controllerIdx < XUSER_MAX_COUNT; 
-					controllerIdx++)
+				Win32HandleXInput(&globalInputState);
+				
+				if (globalInputState.gamepad.down || 
+					globalInputState.keyboard.down)
 				{
-					XINPUT_STATE state;
-					ZeroMemory(&state, sizeof(XINPUT_STATE));
-
-					// Simply get the state of the controller from XInput.
-					dwResult = XInputGetState(controllerIdx, &state);
-
-					if (dwResult == ERROR_SUCCESS)
-					{
-						XINPUT_GAMEPAD* Gamepad = &state.Gamepad;
-						//
-						//typedef struct _XINPUT_STATE {
-						//DWORD          dwPacketNumber;
-						//XINPUT_GAMEPAD Gamepad;
-						//} XINPUT_STATE, *PXINPUT_STATE;
-						bool up		= (Gamepad->wButtons & XINPUT_GAMEPAD_DPAD_UP);
-						bool down	= (Gamepad->wButtons & XINPUT_GAMEPAD_DPAD_DOWN);
-						bool left	= (Gamepad->wButtons & XINPUT_GAMEPAD_DPAD_LEFT);
-						bool right	= (Gamepad->wButtons & XINPUT_GAMEPAD_DPAD_RIGHT);
-						bool start	= (Gamepad->wButtons & XINPUT_GAMEPAD_START);
-						bool back	= (Gamepad->wButtons & XINPUT_GAMEPAD_BACK);
-						bool leftThumb	= (Gamepad->wButtons & XINPUT_GAMEPAD_LEFT_THUMB);
-						bool rightThumb	= (Gamepad->wButtons & XINPUT_GAMEPAD_RIGHT_THUMB);
-						bool leftShoulder	= (Gamepad->wButtons & XINPUT_GAMEPAD_LEFT_SHOULDER);
-						bool rightShoulder	= (Gamepad->wButtons & XINPUT_GAMEPAD_RIGHT_SHOULDER);
-						bool aButton	= (Gamepad->wButtons & XINPUT_GAMEPAD_A);
-						bool bButton	= (Gamepad->wButtons & XINPUT_GAMEPAD_B);
-						bool xButton	= (Gamepad->wButtons & XINPUT_GAMEPAD_X);
-						bool yButton	= (Gamepad->wButtons & XINPUT_GAMEPAD_Y);
-
-						int16_t stickX = Gamepad->sThumbLX;
-						int16_t stickY = Gamepad->sThumbLY;
-
-
-						if (down)
-						{
-							yOffset++;
-						}
-						if (up)
-						{
-							yOffset--;
-						}
-						if (right)
-						{
-							xOffset++;
-						}
-						if (left)
-						{
-							xOffset--;
-						}
-						if (yOffset % 101 == 0)
-						{
-							XINPUT_VIBRATION vib;
-							vib.wLeftMotorSpeed = 10;
-							XInputSetState(controllerIdx, &vib);
-						}
-						else
-						{
-							XINPUT_VIBRATION vib;
-							vib.wLeftMotorSpeed = 10;
-							XInputSetState(controllerIdx, &vib);
-						}
-							 
-
-					}
-					else
-					{
-						// Controller is not connected
-					}
+					yOffset++;
+				}
+				if (globalInputState.gamepad.up ||
+					globalInputState.keyboard.up)
+				{
+					yOffset--;
+				}
+				if (globalInputState.gamepad.right ||
+					globalInputState.keyboard.right)
+				{
+					xOffset++;
+				}
+				if (globalInputState.gamepad.left ||
+					globalInputState.keyboard.left)
+				{
+					xOffset--;
+				}
+				if (yOffset % 101 == 0)
+				{
+					//XINPUT_VIBRATION vib;
+					//vib.wLeftMotorSpeed = 10;
+					//XInputSetState(controllerIdx, &vib);
+				}
+				else
+				{
+					//XINPUT_VIBRATION vib;
+					//vib.wLeftMotorSpeed = 10;
+					//XInputSetState(controllerIdx, &vib);
 				}
 
 				HDC	hdc = GetDC(hwnd);

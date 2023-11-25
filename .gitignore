@@ -5,4 +5,16 @@ code/build/*.exe
 code/build/*.pdb
 code/build/*.obj
 code/build/*.ilk
+
+code/build/debug/*.exe
+code/build/debug/*.pdb
+code/build/debug/*.obj
+code/build/debug/*.ilk
+
+code/build/release/*.exe
+code/build/release/*.pdb
+code/build/release/*.obj
+code/build/release/*.ilk
+
 code/build/enc_temp_folder/*
+code/build/debug/win32_handmade.exe
