@@ -33,7 +33,7 @@ internal WIN32_dims Win32GetWindowDims(HWND hwnd)
     WIN32_dims dims;
     
     RECT rect;
-    GetClientRect(window, &rect);
+    GetClientRect(hwnd, &rect);
     dims.height = rect.bottom - rect.top;
     dims.width = rect.right - rect.left;
     
@@ -52,9 +52,9 @@ internal void Render(WIN32_offscreen_buffer buffer, int xOffset, int yOffset)
 		uint32_t *pixel = (uint32_t *)row;
 		for (int x = 0; x < buffer.width; x++)
 		{
-			uint8_t red = (x + xOffset);
+			uint8_t red = 0;
 			uint8_t green = (y + yOffset);
-			uint8_t blue = 0;
+			uint8_t blue = (x + xOffset);
 			uint8_t blank = 0;
 			// windows is glue green red
 			*pixel = blue | (green << 8) | (red  << 16) | (blank << 24);
@@ -66,9 +66,9 @@ internal void Render(WIN32_offscreen_buffer buffer, int xOffset, int yOffset)
 
 internal void ResizeDIBSection(WIN32_offscreen_buffer* buffer, int width, int height)
 {
-	if (bitMapMemory)
+	if (buffer->memory)
 	{
-		VirtualFree(bitMapMemory, NULL, MEM_RELEASE);
+		VirtualFree(buffer->memory, NULL, MEM_RELEASE);
 	}
 	
     buffer->width = width;
@@ -92,7 +92,7 @@ internal void ResizeDIBSection(WIN32_offscreen_buffer* buffer, int width, int he
 	int bitMapMemorySize = buffer->bytesPerPixel * (buffer->width * buffer->height);
     buffer->memory = VirtualAlloc(NULL, bitMapMemorySize, MEM_COMMIT, PAGE_READWRITE);
 
-    buffer->pitch = buffer.bytesPerPixel * (buffer.width);
+    buffer->pitch = buffer->bytesPerPixel * (buffer->width);
 
 
 }
@@ -106,9 +106,9 @@ internal void Win32UpdateWindow(HDC hdc,
 		          //x, y, width, height,
 		          //x, y, width, height,
 				  0, 0, width, height,
-                  0, 0, buffer->width, buffer->height,
-                  buffer->memory,
-		          &buffer->info,
+                  0, 0, buffer.width, buffer.height,
+                  buffer.memory,
+		          &buffer.info,
 		          DIB_RGB_COLORS,
 				  SRCCOPY);
 }
@@ -137,7 +137,7 @@ LRESULT MainWindowCallback(HWND window, UINT message, WPARAM wParam, LPARAM lPar
 			//int x = ps.rcPaint.left;
 			//int y = ps.rcPaint.top;
 
-            WIN32_dims dims = Win32GetWindowDimension(window);
+            WIN32_dims dims = Win32GetWindowDims(window);
 			Win32UpdateWindow(hdc,
                               global_offscreen_buffer,
                               dims.width, dims.height);
@@ -230,13 +230,13 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
 				Render(global_offscreen_buffer, xOffset, yOffset);
 				HDC hdc = GetDC(hwnd);
                 
-                WIN32_dims dims = Win32GetWindowDimension(window);
+                WIN32_dims dims = Win32GetWindowDims(hwnd);
 				Win32UpdateWindow(hdc,
                                   global_offscreen_buffer,
                                   dims.width, dims.height);
 
                 ReleaseDC(hwnd, hdc);
-				//yOffset++;
+				yOffset++;
 				xOffset++;
 			}
 		}
