@@ -1,5 +1,5 @@
-REM make sure to run this from developer command prompt
 @echo off
+REM make sure to run this from developer command prompt
 
 mkdir ..\build
 pushd ..\build
@@ -14,7 +14,7 @@ cl -Zi -c ..\handmade\win32_handmade.cpp
 
 link /DEBUG -out:win32_handmade.exe ^
 	win32_handmade.obj ^
-	user32.lib gdi32.lib 
+	user32.lib gdi32.lib XInput.lib
 
 popd
 

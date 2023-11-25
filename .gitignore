@@ -5,5 +5,4 @@ code/build/*.exe
 code/build/*.pdb
 code/build/*.obj
 code/build/*.ilk
-
-
+code/build/enc_temp_folder/*
