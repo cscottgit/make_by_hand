@@ -3,6 +3,7 @@
 #include <xinput.h>
 
 #include "win32_handmade.h"
+#include "game.h"
 
 //#include <winuser.h>
 //#include <iostream>
