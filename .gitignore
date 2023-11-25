@@ -1,0 +1,9 @@
+
+code/build/.vs/
+code/build/*.sln
+code/build/*.exe
+code/build/*.pdb
+code/build/*.obj
+code/build/*.ilk
+
+

@@ -67,10 +67,10 @@ internal void ResizeDIBSection(int width, int height)
 	bitMapMemory = VirtualAlloc(NULL, bitMapMemorySize, MEM_COMMIT, PAGE_READWRITE);
 }
 
-internal void win32UpdateWindow(HDC hdc, RECT* windowRect, int x, int y, int width, int height)
+internal void win32UpdateWindow(HDC hdc, RECT windowRect, int x, int y, int width, int height)
 {
-	int windowWidth = windowRect->right - windowRect->left;
-	int windowHeight = windowRect->bottom - windowRect->top;
+	int windowWidth = windowRect.right - windowRect.left;
+	int windowHeight = windowRect.bottom - windowRect.top;
 	
 	StretchDIBits(hdc,
 		          //x, y, width, height,
@@ -119,7 +119,7 @@ LRESULT MainWindowCallback(HWND window, UINT message, WPARAM wParam, LPARAM lPar
 			RECT rect;
 			GetClientRect(window, &rect);
 
-			win32UpdateWindow(hdc, &rect, x, y, windowWidth, windowHeight);
+			win32UpdateWindow(hdc, rect, x, y, windowWidth, windowHeight);
 
 			//PatBlt(hdc, x, y, width, height, rop);
 			
