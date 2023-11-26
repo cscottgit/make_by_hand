@@ -1,6 +1,7 @@
 #include <windows.h>
 #include <stdint.h>
 #include <xinput.h>
+#include <DSound.h>
 
 #include "win32_handmade.h"
 #include "game.h"
@@ -35,6 +36,60 @@ internal void Win32LoadXInput(void)
         localXInputSetState = (XInputSetState_T)GetProcAddress(XInputLibrary, "XInputSetState");
     }
 #endif
+}
+
+internal void Win32InitDSound(HWND hwnd, uint32_t samplesPerSecond, uint32_t bufferSize)
+{
+    // load the library
+ 
+    // get directsound object
+    LPDIRECTSOUND sound;
+    HRESULT result = DirectSoundCreate(0, 
+                                    &sound,
+                                    0);
+
+    WAVEFORMATEX waveFormat = {};
+    waveFormat.wFormatTag = WAVE_FORMAT_PCM;
+    waveFormat.nChannels = 2;
+    waveFormat.nSamplesPerSec = samplesPerSecond;
+    waveFormat.wBitsPerSample = 16;
+    waveFormat.nBlockAlign = (waveFormat.nChannels * waveFormat.wBitsPerSample) / 8;
+    waveFormat.cbSize = 0;
+    waveFormat.nAvgBytesPerSec = waveFormat.nSamplesPerSec * waveFormat.nBlockAlign;
+
+
+    result = sound->SetCooperativeLevel(hwnd, DSSCL_PRIORITY);
+    {
+        DSBUFFERDESC DSBufferDesc;
+        ZeroMemory(&DSBufferDesc, sizeof(DSBUFFERDESC));
+        DSBufferDesc.dwFlags = DSBCAPS_PRIMARYBUFFER;
+        DSBufferDesc.dwBufferBytes = 0;
+        DSBufferDesc.dwSize = sizeof(DSBufferDesc);
+
+        LPDIRECTSOUNDBUFFER primaryBuffer;
+
+        result = sound->CreateSoundBuffer(&DSBufferDesc, &primaryBuffer, 0);
+
+        result = primaryBuffer->SetFormat(&waveFormat);
+    }
+
+
+    {
+
+        DSBUFFERDESC DSBufferDesc = {};
+        ZeroMemory(&DSBufferDesc, sizeof(DSBUFFERDESC));
+        DSBufferDesc.dwFlags = 0;//DSBCAPS_GETCURRENTPOSITION2
+        DSBufferDesc.dwBufferBytes = bufferSize;
+        DSBufferDesc.dwSize = sizeof(DSBufferDesc);
+        DSBufferDesc.lpwfxFormat = &waveFormat;
+        //DSBufferDesc.guid3DAlgorithm = ;
+
+        LPDIRECTSOUNDBUFFER secondaryBuffer;
+        result = sound->CreateSoundBuffer(&DSBufferDesc, &secondaryBuffer, 0);
+    }
+
+
+
 }
 
 
@@ -170,7 +225,7 @@ internal void Render(WIN32OffscreenBuffer *buffer, int xOffset, int yOffset)
     }
 }
 
-internal void ResizeDIBSection(WIN32OffscreenBuffer *buffer, int width, int height)
+internal void Win32ResizeDIBSection(WIN32OffscreenBuffer *buffer, int width, int height)
 {
     if (buffer->memory)
     {
@@ -198,7 +253,7 @@ internal void ResizeDIBSection(WIN32OffscreenBuffer *buffer, int width, int heig
     int bitMapMemorySize = buffer->bytesPerPixel * (buffer->width * buffer->height);
     buffer->memory = VirtualAlloc(NULL, bitMapMemorySize, MEM_COMMIT, PAGE_READWRITE);
 
-    buffer->pitch = buffer->bytesPerPixel * (buffer->width);
+    buffer->pitch = Align16(buffer->bytesPerPixel * (buffer->width));
 }
 
 internal void Win32UpdateWindow(HDC hdc,
@@ -220,7 +275,7 @@ internal void Win32UpdateWindow(HDC hdc,
 /*********
 * Windows callback handler
 *********/
-internal LRESULT MainWindowCallback(HWND window, UINT message, WPARAM wParam, LPARAM lParam)
+internal LRESULT Win32MainWindowCallback(HWND window, UINT message, WPARAM wParam, LPARAM lParam)
 {
     LRESULT ret = 0;
     switch (message)
@@ -305,11 +360,11 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
     Win32LoadXInput();
     WNDCLASSA windowClass = { 0 };
     
-    ResizeDIBSection(&globalOffscreenBuffer, 1280, 720);
+    Win32ResizeDIBSection(&globalOffscreenBuffer, 1280, 720);
     
     windowClass.style = CS_VREDRAW | CS_HREDRAW; // | CS_OWNDC;
     windowClass.hInstance = hInst;
-    windowClass.lpfnWndProc = (WNDPROC)MainWindowCallback;
+    windowClass.lpfnWndProc = (WNDPROC)Win32MainWindowCallback;
     windowClass.lpszClassName = "HandMadeHeroWindowClass";
     
 
@@ -335,6 +390,7 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
             int	yOffset = 0;
             MSG in_message;
 
+            Win32InitDSound(hwnd, 48000, 48000*sizeof(uint16_t)*2);
             ShowWindow(hwnd, cmdshow);
             UpdateWindow(hwnd);
             sRunning = true;

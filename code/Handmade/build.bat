@@ -16,7 +16,7 @@ cl -Zi -c ..\..\handmade\win32_handmade.cpp
 
 link /DEBUG -out:win32_handmade.exe ^
 	win32_handmade.obj ^
-	user32.lib gdi32.lib XInput.lib
+	user32.lib gdi32.lib XInput.lib Dsound.lib
 popd
 
 
@@ -33,7 +33,7 @@ cl -c ..\..\handmade\win32_handmade.cpp
 
 link -out:win32_handmade.exe ^
 	win32_handmade.obj ^
-	user32.lib gdi32.lib XInput.lib
+	user32.lib gdi32.lib XInput.lib Dsound.lib
 popd
 
 

@@ -39,5 +39,10 @@ typedef struct _Input_state
     Gamepad_input_state     gamepad;
 } Input_state;
 
+#define AlignPow2(Value, Alignment) ((Value + ((Alignment) - 1)) & ~((Alignment) - 1))
+#define Align4(Value) ((Value + 3) & ~3)
+#define Align8(Value) ((Value + 7) & ~7)
+#define Align16(Value) ((Value + 15) & ~15)
+
 
 #endif /* _GAME_ */
