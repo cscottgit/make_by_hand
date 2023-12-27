@@ -29,7 +29,7 @@ del *.exe >nul
 del *.o >nul
 
 REM DEBUG BUILDS
-cl -c ..\..\handmade\win32_handmade.cpp
+cl -W3 -c ..\..\handmade\win32_handmade.cpp
 
 link -out:win32_handmade.exe ^
 	win32_handmade.obj ^
